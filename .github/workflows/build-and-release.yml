@@ -1,0 +1,93 @@
+name: Multi-platform Build and Release
+
+on:
+  push:
+    branches: [ "main" ]
+
+permissions:
+  contents: write
+
+jobs:
+  build-mac:
+    runs-on: macos-14
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Raylib
+        run: brew install raylib
+
+      - name: Build native Mac binary (Statically Linked)
+        run: |
+          clang main.c -o hello_raylib_mac \
+            -I/opt/homebrew/include \
+            /opt/homebrew/lib/libraylib.a \
+            -framework CoreVideo \
+            -framework IOKit \
+            -framework Cocoa \
+            -framework GLUT \
+            -framework OpenGL
+
+      - name: Package binary
+        run: zip hello_raylib_mac.zip hello_raylib_mac
+
+      - name: Upload Mac Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mac-binary
+          path: hello_raylib_mac.zip
+
+  build-windows:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install MinGW cross-compiler
+        run: sudo apt-get update && sudo apt-get install -y mingw-w64
+
+      - name: Download Raylib Windows Precompiled
+        run: |
+          wget https://github.com/raysan5/raylib/releases/download/5.5/raylib-5.5_win64_mingw-w64.zip
+          unzip raylib-5.5_win64_mingw-w64.zip
+
+      - name: Build Windows binary
+        run: |
+          x86_64-w64-mingw32-gcc main.c -o hello_raylib_win.exe \
+            -I raylib-5.5_win64_mingw-w64/include \
+            -L raylib-5.5_win64_mingw-w64/lib \
+            -lraylib -lopengl32 -lgdi32 -lwinmm
+
+      - name: Package binary
+        run: zip hello_raylib_win.zip hello_raylib_win.exe
+
+      - name: Upload Windows Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: win-binary
+          path: hello_raylib_win.zip
+
+  release:
+    needs: [build-mac, build-windows]
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Create Release and Upload
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG_NAME="build-$(git rev-parse --short HEAD)"
+          gh release create "$TAG_NAME" artifacts/*.zip \
+            --title "Multi-platform Build ($TAG_NAME)" \
+            --notes "Automated statically-linked builds for macOS (Apple Silicon) and Windows (x64)."
