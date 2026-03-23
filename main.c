@@ -12,9 +12,9 @@ int main(void)
     const char *dvdText = "DVD";
     int fontSize = 60;
     int textWidth = MeasureText(dvdText, fontSize);
-    int textHeight = fontSize;
-    Vector2 dvdPos = { (float)(screenWidth/2 - textWidth/2), (float)(screenHeight/2 - textHeight/2) };
-    Vector2 dvdVel = { 4.0f, 4.0f };
+    int textHeight = fontSize; // Raylib font height approx to fontSize
+    Vector2 dvdPos = { (float)(screenWidth - textWidth) / 2, (float)(screenHeight - textHeight) / 2 };
+    Vector2 dvdVel = { 5.0f, 4.0f };
     Color dvdColor = DARKPURPLE;
 
     while (!WindowShouldClose())
@@ -23,24 +23,33 @@ int main(void)
         dvdPos.x += dvdVel.x;
         dvdPos.y += dvdVel.y;
 
-        // Bounce off edges
-        if ((dvdPos.x <= 0) || (dvdPos.x + textWidth >= screenWidth))
-        {
+        // Bounce off left/right
+        if (dvdPos.x <= 0) {
+            dvdPos.x = 0;
+            dvdVel.x *= -1.0f;
+            dvdColor = (Color){ GetRandomValue(32, 255), GetRandomValue(32, 255), GetRandomValue(32, 255), 255 };
+        } else if (dvdPos.x + textWidth >= screenWidth) {
+            dvdPos.x = screenWidth - textWidth;
             dvdVel.x *= -1.0f;
             dvdColor = (Color){ GetRandomValue(32, 255), GetRandomValue(32, 255), GetRandomValue(32, 255), 255 };
         }
-        if ((dvdPos.y <= 0) || (dvdPos.y + textHeight >= screenHeight))
-        {
+
+        // Bounce off top/bottom
+        if (dvdPos.y <= 0) {
+            dvdPos.y = 0;
+            dvdVel.y *= -1.0f;
+            dvdColor = (Color){ GetRandomValue(32, 255), GetRandomValue(32, 255), GetRandomValue(32, 255), 255 };
+        } else if (dvdPos.y + textHeight >= screenHeight) {
+            dvdPos.y = screenHeight - textHeight;
             dvdVel.y *= -1.0f;
             dvdColor = (Color){ GetRandomValue(32, 255), GetRandomValue(32, 255), GetRandomValue(32, 255), 255 };
         }
 
         BeginDrawing();
         ClearBackground(RAYWHITE);
-        DrawText("Hello from Holly! 🌿", 200, 70, 40, DARKGREEN);
+        DrawText("Hello from Holly! \xf0\x9f\x8c\xbf", 200, 70, 40, DARKGREEN);
         DrawText("Raylib + Zig cross-compile test", 180, 130, 20, GRAY);
         DrawFPS(10, 10);
-        // Draw the DVD text
         DrawText(dvdText, (int)dvdPos.x, (int)dvdPos.y, fontSize, dvdColor);
         EndDrawing();
     }
