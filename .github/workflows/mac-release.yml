@@ -1,0 +1,38 @@
+name: Mac Build and Release
+
+on:
+  push:
+    branches: [ "main" ]
+
+permissions:
+  contents: write
+
+jobs:
+  build-mac:
+    runs-on: macos-14 # GitHub's native Apple Silicon (M1) runner
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Raylib
+        run: brew install raylib
+
+      - name: Build native Mac binary
+        run: |
+          # /opt/homebrew is the default path for Homebrew on Apple Silicon
+          clang main.c -o hello_raylib_mac -I/opt/homebrew/include -L/opt/homebrew/lib -lraylib
+
+      - name: Package binary
+        run: zip hello_raylib_mac.zip hello_raylib_mac
+
+      - name: Create Release and Upload
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Generate a tag based on the commit SHA
+          TAG_NAME="build-$(git rev-parse --short HEAD)"
+          
+          gh release create "$TAG_NAME" hello_raylib_mac.zip \
+            --title "Mac Build ($TAG_NAME)" \
+            --notes "Automated build for macOS (Apple Silicon)."
