@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   build-mac:
-    runs-on: macos-14 # GitHub's native Apple Silicon (M1) runner
+    runs-on: macos-14
     
     steps:
       - name: Checkout code
@@ -18,10 +18,18 @@ jobs:
       - name: Install Raylib
         run: brew install raylib
 
-      - name: Build native Mac binary
+      - name: Build native Mac binary (Statically Linked)
         run: |
-          # /opt/homebrew is the default path for Homebrew on Apple Silicon
-          clang main.c -o hello_raylib_mac -I/opt/homebrew/include -L/opt/homebrew/lib -lraylib
+          # Link against the static archive (.a) instead of the dynamic library (.dylib)
+          # We also have to manually pull in the Apple frameworks Raylib needs
+          clang main.c -o hello_raylib_mac \
+            -I/opt/homebrew/include \
+            /opt/homebrew/lib/libraylib.a \
+            -framework CoreVideo \
+            -framework IOKit \
+            -framework Cocoa \
+            -framework GLUT \
+            -framework OpenGL
 
       - name: Package binary
         run: zip hello_raylib_mac.zip hello_raylib_mac
@@ -30,9 +38,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Generate a tag based on the commit SHA
           TAG_NAME="build-$(git rev-parse --short HEAD)"
-          
           gh release create "$TAG_NAME" hello_raylib_mac.zip \
             --title "Mac Build ($TAG_NAME)" \
-            --notes "Automated build for macOS (Apple Silicon)."
+            --notes "Automated build for macOS (Apple Silicon). Statically linked."
